@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10130f">
+  <meta name="description" content="GymQuest turns your workouts into a game. Build routines, earn XP, keep streaks, and level up.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <title>GymQuest — Train. Earn XP. Level Up.</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" data-page="dashboard" aria-label="GymQuest home">
+        <span class="brand-mark">GQ</span><span>GYM<span class="accent">QUEST</span></span>
+      </a>
+      <button class="icon-button" id="profileButton" title="Your profile" aria-label="Your profile">⚔</button>
+    </header>
+
+    <main id="appMain">
+      <section class="page active" id="page-dashboard">
+        <div class="hero">
+          <div class="eyebrow">YOUR TRAINING ADVENTURE</div>
+          <h1>Every rep<br>moves you <span class="accent">forward.</span></h1>
+          <p class="muted">Show up. Finish strong. Level up.</p>
+          <button class="primary-button" id="quickStart">▶ Start a workout</button>
+        </div>
+        <section class="level-card panel">
+          <div class="level-top">
+            <div class="level-emblem">LVL <strong id="levelNumber">1</strong></div>
+            <div class="level-copy"><div class="eyebrow">CURRENT RANK</div><h2 id="rankName">Gym Recruit</h2><p class="muted small" id="xpText">0 / 250 XP to next level</p></div>
+            <div class="total-xp"><strong id="totalXp">0</strong><span> TOTAL XP</span></div>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="xpBar"></div></div>
+        </section>
+        <div class="stat-grid">
+          <div class="stat-card panel"><span class="stat-icon">🔥</span><strong id="streakValue">0</strong><span class="muted">Day streak</span></div>
+          <div class="stat-card panel"><span class="stat-icon">🏋️</span><strong id="workoutCount">0</strong><span class="muted">Workouts done</span></div>
+          <div class="stat-card panel"><span class="stat-icon">🏅</span><strong id="achievementCount">0</strong><span class="muted">Achievements</span></div>
+        </div>
+        <section class="section-block">
+          <div class="section-heading"><div><div class="eyebrow">YOUR NEXT MOVE</div><h2>My workouts</h2></div><button class="text-button" data-page="workouts">View all →</button></div>
+          <div id="dashboardWorkouts" class="workout-cards"></div>
+        </section>
+        <section class="section-block">
+          <div class="section-heading"><div><div class="eyebrow">MILESTONES</div><h2>Achievements</h2></div><button class="text-button" data-page="progress">View all →</button></div>
+          <div id="dashboardAchievements" class="achievement-strip"></div>
+        </section>
+      </section>
+
+      <section class="page" id="page-workouts">
+        <div class="page-heading"><div class="eyebrow">PLAN YOUR SESSION</div><h1>My workouts</h1><p class="muted">Build a routine from your own exercise library.</p></div>
+        <button class="primary-button full" id="newWorkoutButton">＋ Create a workout</button>
+        <div id="workoutList" class="workout-cards section-block"></div>
+      </section>
+
+      <section class="page" id="page-library">
+        <div class="page-heading"><div class="eyebrow">YOUR PERSONAL ARSENAL</div><h1>Exercise library</h1><p class="muted">Browse built-in moves or add your own.</p></div>
+        <div class="filter-row">
+          <input id="exerciseSearch" type="search" placeholder="Search exercises…" aria-label="Search exercises">
+          <select id="muscleFilter" aria-label="Filter by muscle group"><option value="All">All muscles</option><option>Chest</option><option>Back</option><option>Shoulders</option><option>Legs</option><option>Arms</option><option>Core</option><option>Cardio</option><option>Full Body</option></select>
+        </div>
+        <button class="secondary-button full" id="addExerciseButton">＋ Add custom exercise</button>
+        <div class="library-count muted small" id="libraryCount"></div>
+        <div id="exerciseList" class="exercise-list"></div>
+      </section>
+
+      <section class="page" id="page-progress">
+        <div class="page-heading"><div class="eyebrow">THE WORK ADDS UP</div><h1>Your progress</h1><p class="muted">Every completed session counts.</p></div>
+        <div class="progress-summary panel">
+          <div><span class="muted small">TOTAL XP</span><strong id="progressXp">0</strong></div>
+          <div><span class="muted small">CURRENT STREAK</span><strong id="progressStreak">0 days</strong></div>
+          <div><span class="muted small">SESSIONS</span><strong id="progressWorkouts">0</strong></div>
+        </div>
+        <section class="section-block"><div class="section-heading"><h2>All achievements</h2></div><div id="allAchievements" class="achievement-list"></div></section>
+        <section class="section-block"><div class="section-heading"><h2>Workout history</h2></div><div id="historyList" class="history-list"></div></section>
+        <button class="text-button danger" id="resetProgress">Reset all progress and data</button>
+      </section>
+
+      <section class="page" id="page-session">
+        <div class="session-header"><button class="back-button" id="leaveSession">← Exit</button><span class="eyebrow">WORKOUT IN PROGRESS</span></div>
+        <div class="session-title"><h1 id="sessionName">Workout</h1><p class="muted" id="sessionMeta">0 exercises · Let's do this.</p></div>
+        <div class="session-progress panel"><div class="session-progress-top"><span id="sessionProgressText">0 of 0 complete</span><strong id="sessionPercent">0%</strong></div><div class="progress-track"><div class="progress-fill" id="sessionProgressBar"></div></div></div>
+        <div id="sessionExercises" class="session-exercises"></div>
+        <div class="session-footer"><button class="primary-button full" id="finishWorkout">Finish workout · +50 XP</button><p class="muted tiny">Only finish when you're done. You earn exercise XP for each item checked off.</p></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" id="bottomNav" aria-label="Main navigation">
+      <button class="nav-item active" data-page="dashboard"><span>⌂</span>Home</button>
+      <button class="nav-item" data-page="workouts"><span>▤</span>Workouts</button>
+      <button class="nav-item" data-page="library"><span>✚</span>Exercises</button>
+      <button class="nav-item" data-page="progress"><span>♜</span>Progress</button>
+    </nav>
+  </div>
+
+  <dialog id="workoutDialog" class="modal">
+    <form id="workoutForm" method="dialog">
+      <div class="modal-header"><div><div class="eyebrow">BUILD YOUR ROUTINE</div><h2 id="workoutDialogTitle">Create workout</h2></div><button class="icon-button" type="button" data-close="workoutDialog" aria-label="Close">✕</button></div>
+      <label>Workout name<input id="workoutName" required maxlength="45" placeholder="e.g. Push Day"></label>
+      <label>Choose exercises <span class="muted small">(select at least one)</span></label>
+      <input id="workoutExerciseSearch" type="search" placeholder="Find an exercise…">
+      <div id="workoutExerciseChoices" class="choice-list"></div>
+      <div class="modal-actions"><button type="button" class="secondary-button" data-close="workoutDialog">Cancel</button><button type="submit" class="primary-button">Save workout</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="exerciseDialog" class="modal">
+    <form id="exerciseForm" method="dialog">
+      <div class="modal-header"><div><div class="eyebrow">EXPAND YOUR ARSENAL</div><h2>Add exercise</h2></div><button class="icon-button" type="button" data-close="exerciseDialog" aria-label="Close">✕</button></div>
+      <label>Exercise name<input id="customExerciseName" required maxlength="60" placeholder="e.g. Single-arm cable row"></label>
+      <label>Muscle group<select id="customExerciseMuscle"><option>Chest</option><option>Back</option><option>Shoulders</option><option>Legs</option><option>Arms</option><option>Core</option><option>Cardio</option><option>Full Body</option></select></label>
+      <label>Equipment <input id="customExerciseEquipment" maxlength="50" placeholder="e.g. Dumbbells, machine, bodyweight"></label>
+      <label>Default sets <input id="customExerciseSets" type="number" min="1" max="10" value="3" required></label>
+      <label>Target reps <input id="customExerciseReps" maxlength="20" value="8–12" required placeholder="e.g. 8–12 or 30 sec"></label>
+      <div class="modal-actions"><button type="button" class="secondary-button" data-close="exerciseDialog">Cancel</button><button type="submit" class="primary-button">Add exercise</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="completeDialog" class="modal complete-modal">
+    <div class="complete-mark">✦</div><div class="eyebrow">QUEST COMPLETE</div><h1 id="completeTitle">Workout complete!</h1><p class="muted" id="completeMessage">You showed up for yourself.</p>
+    <div class="reward-box"><span>XP EARNED</span><strong id="earnedXp">+0 XP</strong></div>
+    <button class="primary-button full" id="closeComplete">Collect rewards</button>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
