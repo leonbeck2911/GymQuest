@@ -43,3 +43,14 @@ Workout data is stored in the browser on the device where you use the app. Clear
 ## Troubleshooting
 - If you edit files after deploying, Render will redeploy after the next commit/push.
 - If offline mode doesn't update after changes, close the installed app and reload once while online; the service-worker cache is versioned in `service-worker.js`.
+
+
+## Body and ride tracking (v2)
+- Weight entries are saved locally with their date and exact change from the previous measurement.
+- Bicycle rides can be recorded using the phone's GPS; the app draws and stores the route points and distance. Keep the page open and grant location permission while riding.
+- Past rides can also be added manually with distance, date, and route notes.
+- The map uses Leaflet and OpenStreetMap tiles and therefore needs an internet connection. GPS route tracking requires HTTPS and location permission.
+- All data remains in this browser/device; clearing browser storage can erase it.
+
+### Updating the existing Render site
+Upload the updated `index.html`, `app.js`, `style.css`, and `service-worker.js` to the existing GitHub `GymQuest` repository and commit the changes. Render will redeploy automatically. Existing GymQuest local progress remains in the same browser storage key.

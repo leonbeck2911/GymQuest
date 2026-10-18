@@ -31,7 +31,7 @@
     {id:"level-five",icon:"🌟",name:"Rising Hero",description:"Reach level 5.",test:s=>levelInfo(s.xp).level>=5,xp:100}
   ];
   function freshState() {
-    return {version:1,xp:0,exercises:[...builtIns],workouts:[],history:[],earned:[],lastWorkoutDate:null,currentStreak:0,bestStreak:0,customIds:[],session:null};
+    return {version:2,xp:0,exercises:[...builtIns],workouts:[],history:[],earned:[],lastWorkoutDate:null,currentStreak:0,bestStreak:0,customIds:[],session:null,weightEntries:[],rides:[]};
   }
   function loadState() {
     try {
@@ -42,7 +42,7 @@
       const exercises = Array.isArray(parsed.exercises) ? parsed.exercises : defaults.exercises;
       const custom = exercises.filter(e=>!e.builtin);
       const byId = new Map([...defaults.exercises,...custom].map(e=>[e.id,e]));
-      return {...defaults,...parsed,exercises:[...defaults.exercises,...custom],workouts:Array.isArray(parsed.workouts)?parsed.workouts:[],history:Array.isArray(parsed.history)?parsed.history:[],earned:Array.isArray(parsed.earned)?parsed.earned:[],customIds:parsed.customIds||custom.map(e=>e.id)};
+      return {...defaults,...parsed,exercises:[...defaults.exercises,...custom],workouts:Array.isArray(parsed.workouts)?parsed.workouts:[],history:Array.isArray(parsed.history)?parsed.history:[],earned:Array.isArray(parsed.earned)?parsed.earned:[],weightEntries:Array.isArray(parsed.weightEntries)?parsed.weightEntries:[],rides:Array.isArray(parsed.rides)?parsed.rides:[],customIds:parsed.customIds||custom.map(e=>e.id)};
     } catch { return freshState(); }
   }
   let state = loadState();
@@ -50,6 +50,7 @@
   let activeSession = null;
   let earnedThisSession = 0;
   let toastTimer;
+  let rideMap=null, rideLine=null, rideMarker=null, rideWatchId=null, rideStartedAt=null, rideTimer=null, liveRide=null;
   function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); } catch { toast("Couldn't save locally. Check your browser storage."); } }
   function esc(value) { return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   function levelInfo(xp) {
@@ -113,7 +114,63 @@
     $("#allAchievements").innerHTML=ACHIEVEMENTS.map(a=>{const earned=state.earned.includes(a.id);return `<div class="achievement-row ${earned?"":"locked"}"><div class="badge-icon">${a.icon}</div><div><strong>${esc(a.name)}</strong><p>${esc(a.description)}</p></div><span class="earned-label">${earned?"UNLOCKED":`+${a.xp} XP`}</span></div>`;}).join("");
     $("#historyList").innerHTML=state.history.length?[...state.history].reverse().slice(0,30).map(h=>`<div class="history-item"><div><strong>${esc(h.name)}</strong><span>${esc(h.date)} · ${h.exerciseCount} exercises · ${Math.max(1,Math.round((h.duration||0)/60))} min</span></div><span class="history-xp">+${h.xp} XP</span></div>`).join(""):empty("No history yet","Your completed workouts will appear here.");
   }
-  function renderAll(){renderDashboard();renderWorkouts();renderLibrary();renderProgress();save();}
+  function formatWeight(value){return `${Number(value).toLocaleString(undefined,{maximumFractionDigits:1})} kg`;}
+  function renderTrackers(){
+    const entries=[...(state.weightEntries||[])].sort((a,b)=>a.date.localeCompare(b.date)||a.createdAt-b.createdAt);
+    const latest=entries[entries.length-1], previous=entries.length>1?entries[entries.length-2]:null;
+    $("#currentWeight").textContent=latest?formatWeight(latest.weight):"—";
+    if(latest&&previous){const delta=latest.weight-previous.weight;const sign=delta>0?"+":"";$("#weightChange").textContent=`${formatWeight(previous.weight)} → ${formatWeight(latest.weight)} · ${sign}${delta.toLocaleString(undefined,{maximumFractionDigits:1})} kg`;$("#weightChange").className=`weight-change ${delta<0?"down":delta>0?"up":"flat"}`;}
+    else {$("#weightChange").textContent=latest?"First measurement saved":"Add your first measurement";$("#weightChange").className="weight-change";}
+    $("#weightHistoryCount").textContent=`${entries.length} ${entries.length===1?"entry":"entries"}`;
+    const chart=$("#weightChart");
+    if(entries.length<2){chart.innerHTML=empty(entries.length?"One measurement saved":"No measurements yet",entries.length?"Add another weight later to see your trend.":"Add your weight above to start your progress record.");}
+    else {
+      const width=320,height=128,pad=18,values=entries.map(e=>e.weight),min=Math.min(...values),max=Math.max(...values),range=max-min||1;
+      const pts=entries.map((e,i)=>({x:pad+i*(width-pad*2)/(entries.length-1),y:height-pad-((e.weight-min)/range)*(height-pad*2)}));
+      const path=pts.map((pt,i)=>`${i?"L":"M"}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(" ");
+      chart.innerHTML=`<div class="chart-top-labels"><strong>${formatWeight(max)}</strong><span>${formatWeight(min)}</span></div><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Weight trend from ${esc(entries[0].date)} to ${esc(entries[entries.length-1].date)}"><path d="${path}" fill="none" stroke="#b7f36b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${pts.map(pt=>`<circle cx="${pt.x}" cy="${pt.y}" r="4" fill="#b7f36b" stroke="#10130f" stroke-width="2"/>`).join("")}</svg><div class="chart-dates"><span>${esc(entries[0].date)}</span><span>${esc(entries[entries.length-1].date)}</span></div>`;
+    }
+    $("#weightHistory").innerHTML=entries.length?[...entries].reverse().map((e,i,arr)=>{const older=arr[i+1];const d=older?e.weight-older.weight:null;return `<article class="tracker-history-row"><div><strong>${formatWeight(e.weight)}</strong><span>${esc(e.date)}</span></div><div class="history-delta ${d===null?"":d<0?"down":d>0?"up":"flat"}">${d===null?"First entry":`${d>0?"+":""}${d.toLocaleString(undefined,{maximumFractionDigits:1})} kg`}</div><button class="small-button" data-delete-weight="${esc(e.id)}" aria-label="Delete weight entry">✕</button></article>`;}).join(""):"";
+    const rides=[...(state.rides||[])].sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+    $("#rideHistoryCount").textContent=`${rides.length} ${rides.length===1?"ride":"rides"}`;
+    $("#rideHistory").innerHTML=rides.length?rides.map(r=>`<article class="ride-history-card"><div class="ride-history-top"><span class="ride-badge">🚴</span><div class="ride-history-main"><strong>${esc(r.name||"Bike ride")}</strong><span>${esc(r.date)}${r.duration?` · ${Math.round(r.duration/60)} min`:""}</span></div><strong class="ride-km">${Number(r.distance).toFixed(2)} km</strong></div>${r.notes?`<p>${esc(r.notes)}</p>`:""}${r.points?.length>1?`<button class="small-button" data-show-ride="${esc(r.id)}">Show route on map</button>`:""}<button class="small-button danger-inline" data-delete-ride="${esc(r.id)}">Delete</button></article>`).join(""):empty("No rides recorded yet","Record a GPS ride or add a past ride below.");
+  }
+  function initRideMap(){
+    if(rideMap||!window.L)return;
+    rideMap=L.map("rideMap",{zoomControl:true}).setView([38.7223,-9.1393],7);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(rideMap);
+    rideLine=L.polyline([],{color:"#b7f36b",weight:5,opacity:.9}).addTo(rideMap);
+    $("#rideMapNote").textContent="Ready. Start a GPS ride to draw your route, or open a saved route from ride history.";
+    setTimeout(()=>rideMap.invalidateSize(),200);
+  }
+  function distanceKm(a,b){const rad=x=>x*Math.PI/180;const dLat=rad(b.lat-a.lat),dLon=rad(b.lng-a.lng),lat1=rad(a.lat),lat2=rad(b.lat);const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
+  function updateRideStats(){if(!liveRide)return;$("#rideDistance").textContent=`${liveRide.distance.toFixed(2)} km`;$ ("#ridePoints").textContent=liveRide.points.length;const sec=Math.floor((Date.now()-rideStartedAt)/1000);$("#rideDuration").textContent=`${String(Math.floor(sec/60)).padStart(2,"0")}:${String(sec%60).padStart(2,"0")}`;}
+  function startRide(){
+    if(!navigator.geolocation){toast("GPS location is not supported by this browser.");return;}
+    if(!window.L){toast("Map library is still loading. Check your internet and try again.");return;}
+    if(rideWatchId!==null)return;
+    initRideMap();liveRide={id:uid(),name:"GPS bicycle ride",date:todayKey(),startedAt:Date.now(),distance:0,points:[],notes:""};rideStartedAt=Date.now();rideLine.setLatLngs([]);$("#startRide").disabled=true;$("#stopRide").disabled=false;$("#rideMapNote").textContent="Waiting for GPS signal… keep location enabled.";
+    rideWatchId=navigator.geolocation.watchPosition(pos=>{
+      const point={lat:pos.coords.latitude,lng:pos.coords.longitude,at:pos.timestamp||Date.now(),accuracy:pos.coords.accuracy||0};
+      if(point.accuracy>80){$("#rideMapNote").textContent=`GPS accuracy is about ${Math.round(point.accuracy)} m; waiting for a better signal.`;return;}
+      const last=liveRide.points[liveRide.points.length-1];
+      if(last){const delta=distanceKm(last,point);if(delta<0.003||delta>0.5)return;liveRide.distance+=delta;}
+      liveRide.points.push(point);const latlngs=liveRide.points.map(p=>[p.lat,p.lng]);rideLine.setLatLngs(latlngs);if(rideMarker)rideMarker.setLatLng([point.lat,point.lng]);else rideMarker=L.circleMarker([point.lat,point.lng],{radius:7,color:"#10130f",weight:2,fillColor:"#b7f36b",fillOpacity:1}).addTo(rideMap);rideMap.setView([point.lat,point.lng],Math.max(rideMap.getZoom(),15));$("#rideMapNote").textContent="GPS recording is active. Keep this page open while you ride.";updateRideStats();
+    },err=>{const messages={1:"Location permission denied. Allow location in your browser settings.",2:"GPS position unavailable. Try moving to an open area.",3:"GPS timed out. Keep going; trying to reconnect."};$("#rideMapNote").textContent=messages[err.code]||"GPS error.";if(err.code===1)stopRide(false);},{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+    rideTimer=setInterval(updateRideStats,1000);toast("GPS ride started. Ride safely!");
+  }
+  function stopRide(saveRide=true){
+    if(rideWatchId!==null){navigator.geolocation.clearWatch(rideWatchId);rideWatchId=null;}if(rideTimer){clearInterval(rideTimer);rideTimer=null;}
+    $("#startRide").disabled=false;$("#stopRide").disabled=true;
+    if(!liveRide)return;
+    liveRide.duration=Math.max(0,Math.round((Date.now()-rideStartedAt)/1000));liveRide.completedAt=Date.now();liveRide.date=todayKey();
+    if(saveRide&&liveRide.points.length>=2&&liveRide.distance>0){const suggested=prompt("Name this ride:","My bike ride");liveRide.name=(suggested||"My bike ride").trim()||"My bike ride";state.rides.push(liveRide);save();renderTrackers();toast(`Ride saved · ${liveRide.distance.toFixed(2)} km`);}
+    else if(saveRide)toast("Not enough GPS points to save a route yet. You can add the distance manually below.");
+    $("#rideMapNote").textContent=saveRide?"Ride stopped. Your saved route stays in this browser.":"GPS stopped.";liveRide=null;rideStartedAt=null;updateRideStats();
+  }
+  function showRide(id){const ride=state.rides.find(r=>r.id===id);if(!ride?.points?.length||!window.L)return;initRideMap();const coords=ride.points.map(p=>[p.lat,p.lng]);rideLine.setLatLngs(coords);rideMap.fitBounds(rideLine.getBounds(),{padding:[20,20]});$("#rideMapNote").textContent=`Showing ${ride.name} · ${ride.distance.toFixed(2)} km`;$("#page-trackers").scrollIntoView({behavior:"smooth",block:"start"});setTimeout(()=>rideMap.invalidateSize(),200);}
+
+  function renderAll(){renderDashboard();renderWorkouts();renderLibrary();renderProgress();renderTrackers();save();}
   function openWorkoutDialog(id=null){
     editingWorkoutId=id;const workout=id?state.workouts.find(w=>w.id===id):null;
     $("#workoutDialogTitle").textContent=workout?"Edit workout":"Create workout";$("#workoutName").value=workout?.name||"";
@@ -197,8 +254,14 @@
   $("#leaveSession").addEventListener("click",closeSession);$("#finishWorkout").addEventListener("click",finishWorkout);
   $("#closeComplete").addEventListener("click",()=>{$("#completeDialog").close();setPage("dashboard");});
   $("#resetProgress").addEventListener("click",()=>{if(confirm("This permanently deletes your workouts, custom exercises, XP, streaks and history from this browser. Continue?")){localStorage.removeItem(STORAGE_KEY);state=freshState();activeSession=null;renderAll();setPage("dashboard");toast("All GymQuest data reset.");}});
+  $("#weightDate").value=todayKey();$("#manualRideDate").value=todayKey();
+  $("#weightForm").addEventListener("submit",e=>{e.preventDefault();const weight=Number($("#weightInput").value);if(!Number.isFinite(weight)||weight<=0){toast("Enter a valid weight.");return;}const date=$("#weightDate").value||todayKey();const entry={id:uid(),weight:Math.round(weight*10)/10,date,createdAt:Date.now()};state.weightEntries.push(entry);save();renderTrackers();$("#weightInput").value="";toast("Weight measurement saved.");});
+  $("#manualRideForm").addEventListener("submit",e=>{e.preventDefault();const distance=Number($("#manualRideDistance").value);if(!Number.isFinite(distance)||distance<=0){toast("Enter a valid ride distance.");return;}state.rides.push({id:uid(),name:$("#rideName").value.trim()||"Bike ride",date:$("#manualRideDate").value||todayKey(),distance:Math.round(distance*100)/100,notes:$("#rideNotes").value.trim(),points:[],completedAt:Date.now(),duration:0});save();renderTrackers();$("#manualRideForm").reset();$("#manualRideDate").value=todayKey();toast("Past ride saved.");});
+  $("#startRide").addEventListener("click",startRide);$("#stopRide").addEventListener("click",()=>stopRide(true));
+  document.addEventListener("click",e=>{const delWeight=e.target.closest("[data-delete-weight]");if(delWeight&&confirm("Delete this weight measurement?")){state.weightEntries=state.weightEntries.filter(x=>x.id!==delWeight.dataset.deleteWeight);save();renderTrackers();}const delRide=e.target.closest("[data-delete-ride]");if(delRide&&confirm("Delete this ride record?")){state.rides=state.rides.filter(x=>x.id!==delRide.dataset.deleteRide);save();renderTrackers();}const show=e.target.closest("[data-show-ride]");if(show)showRide(show.dataset.showRide);});
+  document.addEventListener("click",e=>{if(e.target.closest('[data-page="trackers"]')){setTimeout(()=>{initRideMap();if(rideMap)rideMap.invalidateSize();},100);}});
   $("#profileButton").addEventListener("click",()=>toast("Your progress is saved on this device. Keep training!"));
-  window.addEventListener("beforeunload",()=>{if(activeSession)save();});
+  window.addEventListener("beforeunload",()=>{if(activeSession)save();if(rideWatchId!==null)navigator.geolocation.clearWatch(rideWatchId);if(rideTimer)clearInterval(rideTimer);});
   if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost"))window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
   renderAll();
 })();

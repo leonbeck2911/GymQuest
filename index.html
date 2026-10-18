@@ -8,6 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <title>GymQuest — Train. Earn XP. Level Up.</title>
 </head>
 <body>
@@ -79,6 +80,37 @@
         <button class="text-button danger" id="resetProgress">Reset all progress and data</button>
       </section>
 
+      <section class="page" id="page-trackers">
+        <div class="page-heading"><div class="eyebrow">MORE THAN THE WORKOUT</div><h1>Body & rides</h1><p class="muted">Track your weight over time and keep a map record of your bike rides.</p></div>
+        <section class="section-block tracker-section">
+          <div class="section-heading"><div><div class="eyebrow">YOUR JOURNEY</div><h2>Weight tracker</h2></div><span class="tracker-icon">⚖️</span></div>
+          <div class="weight-current panel"><div><span class="muted small">LATEST WEIGHT</span><strong id="currentWeight">—</strong></div><div class="weight-change" id="weightChange">Add your first measurement</div></div>
+          <form id="weightForm" class="tracker-form panel">
+            <label>Weight <span class="muted small">(kg)</span><input id="weightInput" type="number" min="1" max="500" step="0.1" placeholder="e.g. 78.4" required></label>
+            <label>Date<input id="weightDate" type="date" required></label>
+            <button class="primary-button" type="submit">＋ Save measurement</button>
+          </form>
+          <div class="chart-panel panel"><div class="section-heading"><h3>Weight history</h3><span class="muted tiny" id="weightHistoryCount">0 entries</span></div><div id="weightChart" class="weight-chart"></div></div>
+          <div id="weightHistory" class="tracker-history"></div>
+        </section>
+        <section class="section-block tracker-section">
+          <div class="section-heading"><div><div class="eyebrow">OUTDOOR QUEST</div><h2>Bicycle rides</h2></div><span class="tracker-icon">🚴</span></div>
+          <div class="ride-stats panel"><div><span class="muted small">CURRENT RIDE</span><strong id="rideDistance">0.00 km</strong></div><div><span class="muted small">GPS POINTS</span><strong id="ridePoints">0</strong></div><div><span class="muted small">TIME</span><strong id="rideDuration">00:00</strong></div></div>
+          <div class="map-panel panel"><div id="rideMap" aria-label="Bicycle ride route map"></div><p class="muted tiny map-note" id="rideMapNote">The map loads when you're online. Allow location access to record the road you take.</p></div>
+          <div class="ride-controls"><button class="primary-button" id="startRide">▶ Start GPS ride</button><button class="secondary-button" id="stopRide" disabled>■ Stop & save</button></div>
+          <p class="muted tiny">Keep GymQuest open while riding and allow location access. GPS tracking needs HTTPS and may use battery. Your route is saved only in this browser.</p>
+          <form id="manualRideForm" class="tracker-form panel">
+            <div class="eyebrow">ADD A PAST RIDE</div>
+            <label>Ride name<input id="rideName" maxlength="60" placeholder="e.g. Riverside loop" required></label>
+            <div class="ride-input-grid"><label>Distance (km)<input id="manualRideDistance" type="number" min="0.1" max="2000" step="0.1" placeholder="12.5" required></label><label>Date<input id="manualRideDate" type="date" required></label></div>
+            <label>Route notes or start/end points<input id="rideNotes" maxlength="180" placeholder="e.g. Home → river path → home"></label>
+            <button class="secondary-button full" type="submit">＋ Save past ride</button>
+          </form>
+          <div class="section-heading ride-history-heading"><h3>Ride history</h3><span class="muted tiny" id="rideHistoryCount">0 rides</span></div>
+          <div id="rideHistory" class="tracker-history"></div>
+        </section>
+      </section>
+
       <section class="page" id="page-session">
         <div class="session-header"><button class="back-button" id="leaveSession">← Exit</button><span class="eyebrow">WORKOUT IN PROGRESS</span></div>
         <div class="session-title"><h1 id="sessionName">Workout</h1><p class="muted" id="sessionMeta">0 exercises · Let's do this.</p></div>
@@ -93,6 +125,7 @@
       <button class="nav-item" data-page="workouts"><span>▤</span>Workouts</button>
       <button class="nav-item" data-page="library"><span>✚</span>Exercises</button>
       <button class="nav-item" data-page="progress"><span>♜</span>Progress</button>
+      <button class="nav-item" data-page="trackers"><span>🚴</span>Track</button>
     </nav>
   </div>
 
@@ -125,6 +158,7 @@
     <button class="primary-button full" id="closeComplete">Collect rewards</button>
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
 </html>
